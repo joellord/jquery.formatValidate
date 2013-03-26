@@ -11,26 +11,26 @@ Initialize the plugin on the form.  All the rest is managed via the classes and 
 Basic Usage
 -----------
 
-<form id='myform'>
-<input type='text' class='fvRequired'><br />
-<input type='text' class='fvCurrency'><br />
-</form>
+< form id='myform'>
+< input type='text' class='fvRequired'><br />
+< input type='text' class='fvCurrency'><br />
+< /form>
 
-<script>
+< script>
 $('#myform').formatValidate();
-</script>
+< /script>
 
 Override via an HTML attribute
 ------------------------------
 
-<form id='myform'>
-<input type='text' class='fvRequired'><br />
-<input type='text' class='fvCurrency' data-fvcurrency-message='Please enter a valid number, I will format it for you'><br />
-</form>
+< form id='myform'>
+< input type='text' class='fvRequired'><br />
+< input type='text' class='fvCurrency' data-fvcurrency-message='Please enter a valid number, I will format it for you'><br />
+< /form>
 
-<script>
+< script>
 $('#myform').formatValidate();
-</script>
+< /script>
 
 Full details
 ============
