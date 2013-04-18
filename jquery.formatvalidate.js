@@ -2,7 +2,7 @@
  * This jQuery plugin is used for validation and reformatting
  * 
  * @author Joel Lord
- * @version 0.2.20130321
+ * @version 0.2.20130416
  * 
  * Basic Usage
  * $('#myForm').formatValidate();
@@ -20,12 +20,16 @@
  * fvRequire:       A validation for empty (or whitespaces) field
  * fvMinLength:     A validation for mininum length string.  data-fvMinLength-length attribute must be specified
  * fvPostalCode:    A validation for Canadian postal codes.  Reformats as "A0A 0A0"
+ * fvInteger:       A validation for numbers with no decimals
+ * fvUrlNoHttp:     A validation for Urls, without the http:// prefix.  Reformats as lower case
+ * fvSocialSec:     A validation/formatting class for Canadian Social Security number. Reformats as "000 000 000"
  * 
  * Formatting Classes
  * fvCapitalize:    Convert the first letter of each word to a capital letter
  * fvCapitalizeFirst:   Convert the first letter of the string to a capital letter
  * fvNoWhiteSpace:  Strips all white space on the right and left of the field
  * fvUpperCase:     Convert the string to upper case
+ * fvLowerCase:     Convert the string to lower case
  * 
  * Data Attributes
  * Parameters can be adjusted on a field level by using the following data attributes
@@ -47,6 +51,14 @@
  * Future development (@TODO)
  * Allow override of addInvalid and removeInvalid functions
  * Add validation for: Numeric, NumericWith2Digits, maxLength
+ * Social security number should accept hyphens (000-000-000)
+ */
+
+/**
+ * History:
+ * 
+ * 0.2.20130416: Fixed a bug that prevented a form to be marked as valid when using the isValid() function after correcting
+ *   the errors.
  */
 
 (function( $ ){
@@ -57,7 +69,8 @@
     var settings = $.extend( {
         'invalidClass': 'warning',
         'keepFocus': true,
-        'showConsoleMessages': true
+        'showConsoleMessages': true,
+        'customMessages': {}
     }, options);
     
     //Set the default messages and add them to the settings object
@@ -68,9 +81,13 @@
         'fvEmail': 'Not a valid email address',
         'fvMinLength': 'Not long enough',
         'fvPostalCode': 'Invalid postal code, must be in A0A 0A0 format',
-        'fvPhone': 'Invalid phone number, must be in (000)000-0000 format'
+        'fvPhone': 'Invalid phone number, must be in (000)000-0000 format',
+        'fvSocialSec': 'Invalid social security number.  Should be 000 000 000',
+        'fvUrlNoHttp': 'Invalid url, should be www.example.com'
     };
     settings.validationMessages = defaultMessages;
+    
+    var $el = $(this);
     
     //Various functions for this plugin
     var processes = {
@@ -96,16 +113,22 @@
             var errorMessage = this.getParam(el, className, 'message');
 
             //Add error messages
-            el.parent().append(
+            var parentNode = el.parent();
+            //If the parent node is .input-append, find the parent above (bootstrap compatibility)
+            if(parentNode.hasClass('input-append') || parentNode.hasClass('input-prepend')) parentNode = parentNode.parent();
+            
+            parentNode.append(
                     $('<span>').addClass('help-inline').addClass(invalidClass).html(errorMessage)
                 );
-            el.parent().parent().addClass(invalidClass);            
+            parentNode.parent().addClass(invalidClass);            
         },
         //Removes the invalid classes and messages
         removeInvalid: function(el, className) {
             //Get parameters
             var invalidClass = this.getParam(el, className, 'invalidClass');
             //Remove all error messages added by addInvalid()
+            //Get the parent if this class is an input-append (bootstrap compatibility)
+            if(el.parent().hasClass('input-append') || el.parent().hasClass('input-prepend')) el = el.parent();
             el.siblings('span.' + invalidClass).remove();
             el.parent().parent().removeClass(invalidClass);
             el.removeClass('invalidFormElement');            
@@ -152,6 +175,8 @@
     var to = {
         //Converts the value to a currency (no whitespace and no cash sign, commas converted to periods)
         Currency: function(val) {
+            //If empty, change val to 0
+            if(this.NoWhiteSpace(val) == "") val = "0";
             //Remove cash signs
             val = this.NoWhiteSpace(val.replace('$', ''));
             //Replace commas with dots
@@ -191,16 +216,34 @@
         Upper: function(val) {
             return val.toUpperCase();
         },
+        Lower: function(val) {
+            return val.toLowerCase();
+        },
         //Format the postal code with a space in the middle
         PostalCode: function(val) {
             val = to.Upper(val);
             if(val.indexOf(" ") < 0) val = val.substr(0,3) + " " + val.substr(-3, 3);  
             return val;
         },
+        //Removes all spaces in the string
+        NoInnerSpace: function(val) {
+            while(val.indexOf(" ") >= 0) {
+                val = val.replace(' ', '');
+            }
+            return val;            
+        },
+        //Convert the string to a social security number (000 000 000)
+        SocialSec: function(val) {
+            //Remove spaces
+            val = this.NoInnerSpace(val);
+            //Add spaces where needed
+            val = val.substr(0,3) + " " + val.substr(3, 3) + " " + val.substr(6, 3);
+            return val;
+        },
         //Format the phone in a (xxx)xxx-xxxx format
         Phone: function(val) {
             //Remove spaces, parenthesis and dashes
-            val = val.replace(' ', '');
+            val = this.NoInnerSpace(val);
             val = val.replace('(', '');
             val = val.replace(')', '');
             val = val.replace('-', '');
@@ -211,7 +254,7 @@
     }
     
     //Check all elements of the form
-    return this.each(function() {   
+    $el.each(function() {   
         var currentForm = $(this);
         
         //Look for the fields that need formatting or validation
@@ -240,7 +283,9 @@
                 var minLength = processes.getParam($(this), 'fvMinLength', 'length');
                 
                 if(minLength == undefined) {
-                    console.log('#' + $(this).attr('id') + ': Missing data attribute data-fvMinLength-length');
+                    //Give a warning to the web site designer
+                    //Leave this message
+                    if(settings.showConsoleMessages) console.log('#' + $(this).attr('id') + ': Missing data attribute data-fvMinLength-length');
                 } else {
                     if(to.NoWhiteSpace($(this).val()).length >= minLength) {
                         //Valid
@@ -258,7 +303,7 @@
             $(this).blur(function() {
                 processes.removeInvalid($(this), 'fvPostalCode');
                 
-                if($(this).val().match( /([A-Z][0-9][A-Z])\ ?[0-9][A-Z][0-9]/i )) {
+                if($(this).val().match( /([A-Z][0-9][A-Z])\ ?[0-9][A-Z][0-9]/i ) || to.NoWhiteSpace($(this).val()) == '') {
                     //Valid
                     //Switch to upper case and add a space after the third character
                     $(this).val(to.PostalCode($(this).val()));
@@ -269,14 +314,29 @@
             });
         });
         
+        //Social Security
+        $('.fvSocialSec').each(function() {
+            $(this).blur(function() {
+                processes.removeInvalid($(this), 'fvSocialSec');
+                
+                if($(this).val().match( /([0-9]{3}\ *){2}[0-9]{3}/ ) || to.NoWhiteSpace($(this).val()) == '') {
+                    //Valid, reformat
+                    $(this).val(to.SocialSec($(this).val()));
+                } else {
+                    //Invalid
+                    processes.invalidElement($(this), 'fvSocialSec');
+                }
+            });
+        });
+        
         //Phone number (North America)
         $('.fvPhone').each(function() {
             $(this).blur(function() {
                 processes.removeInvalid($(this), 'fvPhone');
-                if($(this).val().match( /(\(?)([0-9]{3})(\-| |\))?([0-9]{3})(\-)?([0-9]{4})/ )) {
+                if($(this).val().match( /(\(?)([0-9]{3})(\-| |\))?([0-9]{3})(\-)?([0-9]{4})/ ) || to.NoWhiteSpace($(this).val()) == '') {
                     //Valid
-                    //Reformat as (000)000-0000
-                    $(this).val(to.Phone($(this).val()));
+                    //Reformat as (000)000-0000 if not a blank string
+                    if(to.NoWhiteSpace($(this).val())) $(this).val(to.Phone($(this).val()));
                 } else {
                     //Invalid
                     processes.invalidElement($(this), 'fvPhone');
@@ -294,7 +354,7 @@
                 if(otherField == undefined || $(otherField).length <= 0) {
                     //Give a warning to the web site designer
                     //Leave this message
-                    console.log('#' + $(this).attr('id') + ': You seem to be missing a data-fvMustMatch-other or the other field was not found');
+                    if(settings.showConsoleMessages) console.log('#' + $(this).attr('id') + ': You seem to be missing a data-fvMustMatch-other or the other field was not found');
                 } else {
                     //Also remove invalid messages for the other field
                     processes.removeInvalid($(otherField), 'fvMustMatch');
@@ -321,7 +381,7 @@
                 processes.removeInvalid($(this), 'fvCurrency');
                 
                 //Validation
-                if(to.NoWhiteSpace($(this).val()).match( /^\$?([0-9]{1,3}(,| )([0-9]{3}(,| ))*[0-9]{3}|[0-9]+)((.|,)[0-9]{0,2})?$/ )) {
+                if(to.NoWhiteSpace($(this).val()).match( /^\$?([0-9]{1,3}(,| )([0-9]{3}(,| ))*[0-9]{3}|[0-9]+)((.|,)[0-9]{0,2})?$/ ) || to.NoWhiteSpace($(this).val()) == '') {
                     //Valid
                     //Replace current value with formatted value
                     $(this).val(to.Currency($(this).val()));
@@ -333,12 +393,27 @@
             });
         });
         
+        //Integer
+        $('.fvInteger').each(function() {
+            $(this).blur(function() {
+                processes.removeInvalid($(this), 'fvInteger');
+                
+                if(to.NoWhiteSpace($(this).val()).match( /[0-9]+/ ) || to.NoWhiteSpace($(this).val()) == '') {
+                    //Valid
+                    //No formatting necessary
+                } else {
+                    //Invalid
+                    processes.invalidElement($(this), 'fvInteger');
+                }
+            });
+        });
+        
         //Email
         $('.fvEmail').each(function() {
             $(this).blur(function() {
                 processes.removeInvalid($(this), 'fvEmail');
                 //Validation
-                if(to.NoWhiteSpace($(this).val()).match( /[0-9a-z]+\@([0-9a-z]{3,64}).[a-z]{2,4}(.[a-z]{2,4}){0,2}/ )) {
+                if(to.NoWhiteSpace($(this).val()).match( /[0-9a-z]+\@([0-9a-z]{3,64}).[a-z]{2,4}(.[a-z]{2,4}){0,2}/ ) || to.NoWhiteSpace($(this).val()) == '') {
                     //Valid
                     $(this).val(to.NoWhiteSpace($(this).val()));
                 } else {
@@ -348,6 +423,25 @@
             });
         });
         
+        //Url with no http part
+        $('.fvUrlNoHttp').each(function() {
+            $(this).blur(function() {
+                processes.removeInvalid($(this), 'fvUrlNoHttp');
+                //Validation
+                if(to.NoWhiteSpace($(this).val()).match( /(http\:\/\/)?([a-z]{1,30}\.)?([a-z]{1,30}\.[a-z]{1,3}){1}(\.[a-z]{1,3}){0,1}/i ) || to.NoWhiteSpace($(this).val()) == '') {
+                    //Valid
+                    var formattedVal = $(this).val();
+                    //Remove http:// prefix if any
+                    if($(this).val().indexOf('http://') > -1) formattedVal.replace('http://', '');
+                    formattedVal = to.Lower(formattedVal);
+                    $(this).val(formattedVal);
+                } else {
+                    //Invalid
+                    processes.invalidElement($(this), 'fvUrlNoHttp');
+                }
+            });
+        });
+                
         //Formatting only, no validation
 
         //Capitalize
@@ -370,11 +464,31 @@
                 $(this).val(to.Upper($(this).val()));
             });
         });
-        
-        currentForm.submit(function(e) {
-            if(currentForm.find('.invalidFormElement').length) (e.preventDefault) ? e.preventDefault() : e.returnValue = false;
+
+        //Lower case
+        $('.fvLowerCase').each(function() {
+            $(this).blur(function() {
+                $(this).val(to.Lowerr($(this).val()));
+            });
         });
     });
 
-  };
+    //Functions applicable to the form
+    var fv = {
+        isValid: function() {
+            $el.find('.invalidFormElement').removeClass('invalidFormElement');
+            
+            $el.find('input, textarea').each(function() {
+                $(this).blur();
+            });
+            if($el.find('.invalidFormElement').length) {
+                if(settings.showConsoleMessages) console.log('Form was blocked due to ' + $el.find('.invalidFormElement').length + ' invalid element(s)');
+                return false;
+            }
+            return true;
+        }
+    }
+
+    return fv;
+  }
 })( jQuery );
