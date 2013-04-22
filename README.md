@@ -69,9 +69,9 @@ Options
 =======
 The following options can be passed as parameters when calling the script or they can be set using data-classname-option HTML attribute (except for custom message which can be overridden by using data-classname-message):
 
-invalidClass:       Takes a string as a parameter.  This is the class that is used for error messages (typically 'warning' or 'error').  Default is 'warning'.
-keepFocus:          Takes a boolean as a parameter.  Sets whether the input keeps the focus if invalid.  Default is true.
-showConsoleMessages:Takes a boolean as a parameter.  If set to true, some console messages will be displayed what an error is detected.  For example, a missing data attribute.  Default is true.
-customMessages      Takes an object as a parameter.  Each custom message must be in the "className": "Message" form.  These message will override the application default messages.
-isValid             Takes a function as a parameter.  This is the function that will be executed if the field is valid (typically, this removes error messages)
-isInvalid           Takes a function as a parameter.  This is the function that will be executed if the field is invvalid (typically, this adds error messages)
+ * invalidClass:       Takes a string as a parameter.  This is the class that is used for error messages (typically 'warning' or 'error').  Default is 'warning'.
+ * keepFocus:          Takes a boolean as a parameter.  Sets whether the input keeps the focus if invalid.  Default is true.
+ * showConsoleMessages:Takes a boolean as a parameter.  If set to true, some console messages will be displayed what an error is detected.  For example, a missing data attribute.  Default is true.
+ * customMessages      Takes an object as a parameter.  Each custom message must be in the "className": "Message" form.  These message will override the application default messages.
+ * isValid             Takes a function as a parameter.  This is the function that will be executed if the field is valid (typically, this removes error messages)
+ * isInvalid           Takes a function as a parameter.  This is the function that will be executed if the field is invvalid (typically, this adds error messages)
