@@ -10,35 +10,36 @@ Initialize the plugin on the form.  All the rest is managed via the classes and 
 
 Basic Usage
 -----------
+```javascript
+<form id='myform'>
+<input type='text' class='fvRequired'><br />
+<input type='text' class='fvCurrency'><br />
+</form>
 
-< form id='myform'>
-< input type='text' class='fvRequired'><br />
-< input type='text' class='fvCurrency'><br />
-< /form>
-
-< script>
+<script>
 $('#myform').formatValidate();
-< /script>
+</script>
+```
 
 Override via an HTML attribute
 ------------------------------
+```javascript
+<form id='myform'>
+<input type='text' class='fvRequired'><br />
+<input type='text' class='fvCurrency' data-fvcurrency-message='Please enter a valid number, I will format it for you'><br />
+</form>
 
-< form id='myform'>
-< input type='text' class='fvRequired'><br />
-< input type='text' class='fvCurrency' data-fvcurrency-message='Please enter a valid number, I will format it for you'><br />
-< /form>
+<script>
+$('#myform').formatValidate();
 
-< < script>
-< $('#myform').formatValidate();
+//Or with options
+var options = {};
+$('#myform').formatValidate(options);
 
-< //Or with options
-< var options = {};
-< $('#myform').formatValidate(options);
-
-< //Test test if a form is valid (Returns a bool)
-< alert $('#myform').formatValidate().isValid();
-< < /script>
-
+//Test test if a form is valid (Returns a bool)
+alert $('#myform').formatValidate().isValid();
+</script>
+```
 Currently supported classes
 ===========================
 
@@ -69,9 +70,9 @@ Options
 =======
 The following options can be passed as parameters when calling the script or they can be set using data-classname-option HTML attribute (except for custom message which can be overridden by using data-classname-message):
 
- * invalidClass:       Takes a string as a parameter.  This is the class that is used for error messages (typically 'warning' or 'error').  Default is 'warning'.
- * keepFocus:          Takes a boolean as a parameter.  Sets whether the input keeps the focus if invalid.  Default is true.
- * showConsoleMessages:Takes a boolean as a parameter.  If set to true, some console messages will be displayed what an error is detected.  For example, a missing data attribute.  Default is true.
- * customMessages      Takes an object as a parameter.  Each custom message must be in the "className": "Message" form.  These message will override the application default messages.
- * isValid             Takes a function as a parameter.  This is the function that will be executed if the field is valid (typically, this removes error messages)
- * isInvalid           Takes a function as a parameter.  This is the function that will be executed if the field is invvalid (typically, this adds error messages)
+ * *invalidClass*       Takes a string as a parameter.  This is the class that is used for error messages (typically 'warning' or 'error').  Default is 'warning'.
+ * *keepFocus*          Takes a boolean as a parameter.  Sets whether the input keeps the focus if invalid.  Default is true.
+ * *showConsoleMessages* Takes a boolean as a parameter.  If set to true, some console messages will be displayed what an error is detected.  For example, a missing data attribute.  Default is true.
+ * *customMessages*      Takes an object as a parameter.  Each custom message must be in the "className": "Message" form.  These message will override the application default messages.
+ * *isValid*            Takes a function as a parameter.  This is the function that will be executed if the field is valid (typically, this removes error messages)
+ * *isInvalid*           Takes a function as a parameter.  This is the function that will be executed if the field is invvalid (typically, this adds error messages)
