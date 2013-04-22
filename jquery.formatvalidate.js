@@ -2,7 +2,7 @@
  * This jQuery plugin is used for validation and reformatting
  * 
  * @author Joel Lord
- * @version 0.2.20130416
+ * @version 0.2.20130422
  * 
  * Basic Usage
  * $('#myForm').formatValidate();
@@ -22,6 +22,7 @@
  * fvPostalCode:    A validation for Canadian postal codes.  Reformats as "A0A 0A0"
  * fvInteger:       A validation for numbers with no decimals
  * fvUrlNoHttp:     A validation for Urls, without the http:// prefix.  Reformats as lower case
+ * fvUrl:           A validation for Urls, this one automatically adds the http:// prefix.  Reformats as lower case
  * fvSocialSec:     A validation/formatting class for Canadian Social Security number. Reformats as "000 000 000"
  * 
  * Formatting Classes
@@ -49,13 +50,18 @@
  * });
  * 
  * Future development (@TODO)
- * Allow override of addInvalid and removeInvalid functions
- * Add validation for: Numeric, NumericWith2Digits, maxLength
+ * Add validation for: Numeric (float), NumericWith2Digits, maxLength
  * Social security number should accept hyphens (000-000-000)
+ * 
+ * Bugs: (@TODO)
+ * Multiple validation function.  The second validation function erases error messages from the first one.
  */
 
 /**
  * History:
+ * 0.2.20130422: Finished generic function for handling custom validation classes.
+ * 
+ * 0.2.20130417: Started working on a generic function to handle validation/formatting of objects passed as parameters
  * 
  * 0.2.20130416: Fixed a bug that prevented a form to be marked as valid when using the isValid() function after correcting
  *   the errors.
@@ -206,7 +212,8 @@
         },
         //Removes trailing or starting whitespaces
         NoWhiteSpace: function(val) {
-            return val.replace(/(^\s*)|(\s*$)/g, "");
+            if(val.match(/(^\s*)|(\s*$)/)) val = val.replace(/(^\s*)|(\s*$)/g, "");
+            return val;
         },
         //Capitalize the first letter of a string
         CapitalizeFirst: function(val) {
@@ -223,6 +230,7 @@
         PostalCode: function(val) {
             val = to.Upper(val);
             if(val.indexOf(" ") < 0) val = val.substr(0,3) + " " + val.substr(-3, 3);  
+            //if(val == ' ') val = '';
             return val;
         },
         //Removes all spaces in the string
@@ -234,8 +242,9 @@
         },
         //Convert the string to a social security number (000 000 000)
         SocialSec: function(val) {
-            //Remove spaces
+            //Remove spaces and hypens
             val = this.NoInnerSpace(val);
+            val = val.replace(/\-/g, '');
             //Add spaces where needed
             val = val.substr(0,3) + " " + val.substr(3, 3) + " " + val.substr(6, 3);
             return val;
@@ -259,90 +268,175 @@
         
         //Look for the fields that need formatting or validation
         
-        //Required
-        $('.fvRequired').each(function() {
-            $(this).blur(function() {
-                //Remove error classes
-                processes.removeInvalid($(this), 'fvRequired');
+        //Create a generic function that handles the formatting and validation
+        function genericFormatValidate(genericFv) {
+            $('.' + genericFv.className).each(function() {
+                var procEl = $(this);
+                var reformat = false;
                 
-                //Validation
-                if(to.NoWhiteSpace($(this).val()) != "") {
-                    //Valid
-                    //No reformatting ...   Do nothing
-                } else {
-                    //Invalid
-                    processes.invalidElement($(this), 'fvRequired');
-                }
-            })
-        });
-        
-        //Minimum Length
-        $('.fvMinLength').each(function() {
-            $(this).blur(function() {
-                processes.removeInvalid($(this), 'fvMinLength');
-                var minLength = processes.getParam($(this), 'fvMinLength', 'length');
+                //Set defaults
+                if(genericFv.isRequired == undefined) genericFv.isRequired = false;
+                if(genericFv.regex != undefined) genericFv.validationFn = function(value) {
+                    return (value.match(genericFv.regex));
+                };
                 
-                if(minLength == undefined) {
-                    //Give a warning to the web site designer
-                    //Leave this message
-                    if(settings.showConsoleMessages) console.log('#' + $(this).attr('id') + ': Missing data attribute data-fvMinLength-length');
-                } else {
-                    if(to.NoWhiteSpace($(this).val()).length >= minLength) {
-                        //Valid
-                        //No formatting...  Do nothing
-                    } else {
-                        //Invalid
-                        processes.invalidElement($(this), 'fvMinLength');
+                var params = {};
+                if(genericFv.params) {
+                    if(!(genericFv.params instanceof Array)) genericFv.params = [genericFv.params];
+                    for(var i = 0; i<genericFv.params.length; i++) {
+                        genericFv[genericFv.params[i]] = processes.getParam(procEl, genericFv.className, genericFv.params[i]);
+                        if(genericFv[genericFv.params[i]] == undefined && settings.showConsoleMessages) console.log('FV: #' + procEl.attr('id') + ' : Missing attribute data-' + genericFv.className + '-' + genericFv.params[i]);
                     }
                 }
+                procEl.blur(function() {
+                    processes.removeInvalid(procEl, genericFv.classname);
+                    var cond2 = function(value) {return false;}
+                    if(!genericFv.isRequired) {
+                        cond2 = function(value) {return (to.NoWhiteSpace(value) == "");};
+                    }
+                    if(genericFv.validationFn && processes.isFunction(genericFv.validationFn)) {
+                        if(genericFv.validationFn(to.NoWhiteSpace(procEl.val())) || cond2(procEl.val())) {
+                            reformat = true;
+                        } else {
+                            processes.invalidElement(procEl, genericFv.className);
+                        }
+                    } else {
+                        reformat = true;
+                    }
+                    if(reformat) {
+                        if(genericFv.formattingFn && processes.isFunction(genericFv.formattingFn) && to.NoWhiteSpace(procEl.val()) != "") procEl.val(to.NoWhiteSpace(genericFv.formattingFn(procEl.val())));
+                    }
+                });
             });
-        });
+        }
         
-        //Postal Code (Canadian)
-        $('.fvPostalCode').each(function() {
-            $(this).blur(function() {
-                processes.removeInvalid($(this), 'fvPostalCode');
-                
-                if($(this).val().match( /([A-Z][0-9][A-Z])\ ?[0-9][A-Z][0-9]/i ) || to.NoWhiteSpace($(this).val()) == '') {
-                    //Valid
-                    //Switch to upper case and add a space after the third character
-                    $(this).val(to.PostalCode($(this).val()));
-                } else {
-                    //Invalid
-                    processes.invalidElement($(this), 'fvPostalCode');
+        var fvClasses = [
+            //Required Field
+            {
+                className: 'fvRequired',
+                validationFn: function(value) {
+                    return (value != "");
+                },
+                isRequired: true
+            },
+            //Minimum Length
+            {
+                className: 'fvMinLength',
+                params: ['length'],
+                validationFn: function(value) {
+                    return (value.length >= this.length);
                 }
-            });
-        });
+            },
+            {
+                className: 'fvPostalCode',
+                regex: /([A-Z][0-9][A-Z])\ ?[0-9][A-Z][0-9]/i,
+                formattingFn: function(value) {
+                    return to.PostalCode(value);
+                }
+            },
+            {
+                className: 'fvSocialSec',
+                validationFn: function(value) {
+                    return (value.match( /([0-9]{3}(\ |-)*){2}[0-9]{3}/ ));
+                },
+                formattingFn: function(value) {
+                    return to.SocialSec(value);
+                }
+            },
+            {
+                className: 'fvPhone',
+                validationFn: function(value) {
+                    return (value.match( /(\(?)([0-9]{3})(\-| |\))?([0-9]{3})(\-)?([0-9]{4})/ ));
+                },
+                formattingFn: function(value) {
+                    return to.Phone(value);
+                }
+            },
+            {
+                className: 'fvCurrency',
+                validationFn: function(value) {
+                    return (value.match( /^\$?([0-9]{1,3}(,| )([0-9]{3}(,| ))*[0-9]{3}|[0-9]+)((.|,)[0-9]{0,2})?$/ ));
+                },
+                formattingFn: function(value) {
+                    return to.Currency(value);
+                }
+            },
+            {
+                className: 'fvInteger',
+                validationFn: function(value) {
+                    return (value.match( /[0-9]+/ ));
+                }
+            },
+            {
+                className: 'fvEmail',
+                validationFn: function(value) {
+                    return (value.match(/[0-9a-z]+\@([0-9a-z]{3,64}).[a-z]{2,4}(.[a-z]{2,4}){0,2}/));
+                },
+                formattingFn: function(value) {
+                    return to.NoWhiteSpace(value);
+                }
+            },
+            {
+                className: 'fvUrlNoHttp',
+                validationFn: function(value) {
+                    return (value.match(/(http\:\/\/)?([a-z]{1,30}\.)?([a-z]{1,30}\.[a-z]{1,3}){1}(\.[a-z]{1,3}){0,1}/i));
+                },
+                formattingFn: function(value) {
+                    var formattedVal = value;
+                    //Remove http:// prefix if any
+                    if(value.indexOf('http://') > -1) formattedVal.replace('http://', '');
+                    formattedVal = to.Lower(formattedVal);
+                    return formattedVal;
+                }
+            },
+            {
+                className: 'fvUrl',
+                validationFn: function(value) {
+                    return (value.match(/(http\:\/\/)?([a-z]{1,30}\.)?([a-z]{1,30}\.[a-z]{1,3}){1}(\.[a-z]{1,3}){0,1}/i));
+                },
+                formattingFn: function(value) {
+                    var formattedVal = value;
+                    //Add http:// prefix if any
+                    if(value.indexOf('http://') < 0) formattedVal += 'http://';
+                    formattedVal = to.Lower(formattedVal);
+                    return formattedVal;
+                }
+            },
+            {
+                className: 'fvCapitalize',
+                formattingFn: function(value) {
+                    return to.Capitalize(value);
+                }
+            },
+            {
+                className: 'fvNoWhiteSpace',
+                formattingFn: function(value) {
+                    return to.NoWhiteSpace(value);
+                }
+            },
+            {
+                className: 'fvUpperCase',
+                formattingFn: function(value) {
+                    return to.Upper(value);
+                }
+            },
+            {
+                className: 'fvLowerCase',
+                formattingFn: function(value) {
+                    return to.Lower(value);
+                }
+            }
+        ];
         
-        //Social Security
-        $('.fvSocialSec').each(function() {
-            $(this).blur(function() {
-                processes.removeInvalid($(this), 'fvSocialSec');
-                
-                if($(this).val().match( /([0-9]{3}\ *){2}[0-9]{3}/ ) || to.NoWhiteSpace($(this).val()) == '') {
-                    //Valid, reformat
-                    $(this).val(to.SocialSec($(this).val()));
-                } else {
-                    //Invalid
-                    processes.invalidElement($(this), 'fvSocialSec');
-                }
-            });
+        $.each(fvClasses, function(index) {
+            var fvClass = fvClasses[index];
+            genericFormatValidate(fvClass);
         });
-        
-        //Phone number (North America)
-        $('.fvPhone').each(function() {
-            $(this).blur(function() {
-                processes.removeInvalid($(this), 'fvPhone');
-                if($(this).val().match( /(\(?)([0-9]{3})(\-| |\))?([0-9]{3})(\-)?([0-9]{4})/ ) || to.NoWhiteSpace($(this).val()) == '') {
-                    //Valid
-                    //Reformat as (000)000-0000 if not a blank string
-                    if(to.NoWhiteSpace($(this).val())) $(this).val(to.Phone($(this).val()));
-                } else {
-                    //Invalid
-                    processes.invalidElement($(this), 'fvPhone');
-                }
-            });
-        });
+
+        /**
+         * Non Standard validation/Formatting
+         * 
+         */
         
         //Must match another field
         $('.fvMustMatch').each(function() {
@@ -374,103 +468,6 @@
             });
         });
         
-        //Currency
-        $('.fvCurrency').each(function() {
-            $(this).blur(function() {
-                //Remove error classes
-                processes.removeInvalid($(this), 'fvCurrency');
-                
-                //Validation
-                if(to.NoWhiteSpace($(this).val()).match( /^\$?([0-9]{1,3}(,| )([0-9]{3}(,| ))*[0-9]{3}|[0-9]+)((.|,)[0-9]{0,2})?$/ ) || to.NoWhiteSpace($(this).val()) == '') {
-                    //Valid
-                    //Replace current value with formatted value
-                    $(this).val(to.Currency($(this).val()));
-                } else {
-                    //Invalid
-                    //Get the error message
-                    processes.invalidElement($(this), 'fvCurrency');
-                }
-            });
-        });
-        
-        //Integer
-        $('.fvInteger').each(function() {
-            $(this).blur(function() {
-                processes.removeInvalid($(this), 'fvInteger');
-                
-                if(to.NoWhiteSpace($(this).val()).match( /[0-9]+/ ) || to.NoWhiteSpace($(this).val()) == '') {
-                    //Valid
-                    //No formatting necessary
-                } else {
-                    //Invalid
-                    processes.invalidElement($(this), 'fvInteger');
-                }
-            });
-        });
-        
-        //Email
-        $('.fvEmail').each(function() {
-            $(this).blur(function() {
-                processes.removeInvalid($(this), 'fvEmail');
-                //Validation
-                if(to.NoWhiteSpace($(this).val()).match( /[0-9a-z]+\@([0-9a-z]{3,64}).[a-z]{2,4}(.[a-z]{2,4}){0,2}/ ) || to.NoWhiteSpace($(this).val()) == '') {
-                    //Valid
-                    $(this).val(to.NoWhiteSpace($(this).val()));
-                } else {
-                    //Invalid
-                    processes.invalidElement($(this), 'fvEmail');
-                }
-            });
-        });
-        
-        //Url with no http part
-        $('.fvUrlNoHttp').each(function() {
-            $(this).blur(function() {
-                processes.removeInvalid($(this), 'fvUrlNoHttp');
-                //Validation
-                if(to.NoWhiteSpace($(this).val()).match( /(http\:\/\/)?([a-z]{1,30}\.)?([a-z]{1,30}\.[a-z]{1,3}){1}(\.[a-z]{1,3}){0,1}/i ) || to.NoWhiteSpace($(this).val()) == '') {
-                    //Valid
-                    var formattedVal = $(this).val();
-                    //Remove http:// prefix if any
-                    if($(this).val().indexOf('http://') > -1) formattedVal.replace('http://', '');
-                    formattedVal = to.Lower(formattedVal);
-                    $(this).val(formattedVal);
-                } else {
-                    //Invalid
-                    processes.invalidElement($(this), 'fvUrlNoHttp');
-                }
-            });
-        });
-                
-        //Formatting only, no validation
-
-        //Capitalize
-        $('.fvCapitalize').each(function() {
-            $(this).blur(function() {
-                $(this).val(to.Capitalize($(this).val()));
-            });
-        });        
-
-        //No White space
-        $('.fvNoWhiteSpace').each(function() {
-            $(this).blur(function() {
-                $(this).val(to.NoWhiteSpace($(this).val()));
-            });
-        });
-        
-        //Upper case
-        $('.fvUpperCase').each(function() {
-            $(this).blur(function() {
-                $(this).val(to.Upper($(this).val()));
-            });
-        });
-
-        //Lower case
-        $('.fvLowerCase').each(function() {
-            $(this).blur(function() {
-                $(this).val(to.Lowerr($(this).val()));
-            });
-        });
     });
 
     //Functions applicable to the form
