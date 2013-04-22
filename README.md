@@ -28,16 +28,16 @@ Override via an HTML attribute
 < input type='text' class='fvCurrency' data-fvcurrency-message='Please enter a valid number, I will format it for you'><br />
 < /form>
 
-< script>
-$('#myform').formatValidate();
+< < script>
+< $('#myform').formatValidate();
 
-//Or with options
-var options = {};
-$('#myform').formatValidate(options);
+< //Or with options
+< var options = {};
+< $('#myform').formatValidate(options);
 
-//Test test if a form is valid (Returns a bool)
-alert $('#myform').formatValidate().isValid();
-< /script>
+< //Test test if a form is valid (Returns a bool)
+< alert $('#myform').formatValidate().isValid();
+< < /script>
 
 Currently supported classes
 ===========================
