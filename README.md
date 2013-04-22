@@ -30,57 +30,48 @@ Override via an HTML attribute
 
 < script>
 $('#myform').formatValidate();
+
+//Or with options
+var options = {};
+$('#myform').formatValidate(options);
+
+//Test test if a form is valid (Returns a bool)
+alert $('#myform').formatValidate().isValid();
 < /script>
 
-Full details
-============
-/**
- * This jQuery plugin is used for validation and reformatting
- * 
- * @author Joel Lord
- * @version 0.2.20130321
- * 
- * Basic Usage
- * $('#myForm').formatValidate();
- * 
- * This will start the validation for the form.  Validation is on a field level
- * Every input should have a validation class according to what needs to be validated
- * Some validation classes need some parameters which are passed as data attributes.
- * A message will be shown in the console when trying to validate an element with 
- * a missing tag.
- * 
- * Validation Classes:
+Currently supported classes
+===========================
+
+Validation Classes
+------------------
+These classes will validate and reformat the data:
  * fvCurrency:      A validation/formatting class for currencies
  * fvEmail:         A validation class for emails
  * fvMustMatch:     A validation for two matching fields.  data-fvMustMatch-other attribute must be specified
  * fvRequire:       A validation for empty (or whitespaces) field
  * fvMinLength:     A validation for mininum length string.  data-fvMinLength-length attribute must be specified
  * fvPostalCode:    A validation for Canadian postal codes.  Reformats as "A0A 0A0"
- * 
- * Formatting Classes
+ * fvInteger:       A validation for numbers with no decimals
+ * fvUrlNoHttp:     A validation for Urls, without the http:// prefix.  Reformats as lower case
+ * fvUrl:           A validation for Urls, this one automatically adds the http:// prefix.  Reformats as lower case
+ * fvSocialSec:     A validation/formatting class for Canadian Social Security number. Reformats as "000 000 000"
+
+Reformatting Classes
+--------------------
+These classes will only reformat the data, they will not do any validation:
  * fvCapitalize:    Convert the first letter of each word to a capital letter
  * fvCapitalizeFirst:   Convert the first letter of the string to a capital letter
  * fvNoWhiteSpace:  Strips all white space on the right and left of the field
  * fvUpperCase:     Convert the string to upper case
- * 
- * Data Attributes
- * Parameters can be adjusted on a field level by using the following data attributes
- * data-ValidationClass-message:    Changes the message to be displayed when field value is not valid
- * data-ValidationClass-invalidClass:   The class to use when the data is invalid
- * data-ValidationCalss-keepFocus:  Will prevent the user to change field when data is invalid (when set to anything other than "false")
- * 
- * Parameters
- * Other parameters can be called when loading the plugin
- * $('#myForm').formatValidate({
- *   'invalidClass': 'error',       //Changes the class to use when data is invalid for all fields ('warning' by default)
- *   'keepFocus': true,             //Prevents the user to change field when data is invalid for all fields (true by default)
- *   'showConsoleMessages' true,    //Will show console messages when a required data-attribute is missing (true by default)
- *   'customMessages': {
- *      'ValidationClass': 'Message'    //Changes the invalid field message for the class 'ValidationClass'
- *   }
- * });
- * 
- * Future development (@TODO)
- * Allow override of addInvalid and removeInvalid functions
- * Add validation for: Numeric, NumericWith2Digits, maxLength
- */
+ * fvLowerCase:     Convert the string to lower case
+
+Options
+=======
+The following options can be passed as parameters when calling the script or they can be set using data-classname-option HTML attribute (except for custom message which can be overridden by using data-classname-message):
+
+invalidClass:       Takes a string as a parameter.  This is the class that is used for error messages (typically 'warning' or 'error').  Default is 'warning'.
+keepFocus:          Takes a boolean as a parameter.  Sets whether the input keeps the focus if invalid.  Default is true.
+showConsoleMessages:Takes a boolean as a parameter.  If set to true, some console messages will be displayed what an error is detected.  For example, a missing data attribute.  Default is true.
+customMessages      Takes an object as a parameter.  Each custom message must be in the "className": "Message" form.  These message will override the application default messages.
+isValid             Takes a function as a parameter.  This is the function that will be executed if the field is valid (typically, this removes error messages)
+isInvalid           Takes a function as a parameter.  This is the function that will be executed if the field is invvalid (typically, this adds error messages)

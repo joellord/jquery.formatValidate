@@ -35,7 +35,7 @@
                     Text Input
                 </label>
                 <div class="controls">
-                    <input type="text" id="second" placeholder="Text" class="fvRequired fvCapitalize" data-fvcurrency-message="Error!"/>
+                    <input type="text" id="second" placeholder="Text" class="fvCurrency" data-fvcurrency-message="Error!"/>
                 </div>
             </div>            
 
@@ -44,7 +44,7 @@
                     Text Input
                 </label>
                 <div class="controls">
-                    <input type="text" id="third" placeholder="Text" class="fvPhone" data-fvMinLength-length="4" data-fvMustMatch-other="#fourth" data-fvMustMatch-message="No match"/>
+                    <input type="text" id="third" placeholder="Text" class="fvMinLength" data-fvMinLength-length="4" data-fvMustMatch-other="#fourth" data-fvMustMatch-message="No match"/>
                 </div>
             </div>            
 
@@ -53,7 +53,7 @@
                     Text Input
                 </label>
                 <div class="controls">
-                    <input type="text" id="fourth" placeholder="Text" class="fvPostalCode" data-fvMustMatch-other="#third" data-fvMustMatch-message="No match"/>
+                    <input type="text" id="fourth" placeholder="Text" class="fvMustMatch" data-fvMustMatch-other="#third" data-fvMustMatch-message="No match"/>
                 </div>
             </div>  
             
