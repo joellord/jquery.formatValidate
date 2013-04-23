@@ -370,7 +370,7 @@
             {
                 className: 'fvEmail',
                 validationFn: function(value) {
-                    return (value.match(/[0-9a-z]+\@([0-9a-z]{3,64}).[a-z]{2,4}(.[a-z]{2,4}){0,2}/));
+                    return (value.match(/[0-9a-z]+\@([0-9a-z]{3,64})(\.)[a-z]{2,4}(.[a-z]{2,4}){0,2}/));
                 },
                 formattingFn: function(value) {
                     return to.NoWhiteSpace(value);
