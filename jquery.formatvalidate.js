@@ -109,7 +109,17 @@
             el.addClass('invalidFormElement');
             //Set focus back if needed (except for fvMustMatch fields)
             if(keepFocus && className != 'fvMustMatch') {
-                el.focus();
+                //check for the browser's support of the focus.
+                if($.support.focus){                                                            
+                    el.focus();
+                }else{
+                    //if not then get the current element id and
+                    // add some delay in focusing the field
+                    var elemId = el.context.attributes.id.nodeValue;
+                    setTimeout(function(){
+                        document.getElementById(elemId).focus()
+                    }, 1);                    
+                }
             }
         },
         //Adds the invalid classes and messages
