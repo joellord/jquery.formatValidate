@@ -113,12 +113,8 @@
                 if($.support.focus){                                                            
                     el.focus();
                 }else{
-                    //if not then get the current element id and
-                    // add some delay in focusing the field
-                    var elemId = el.context.attributes.id.nodeValue;
-                    setTimeout(function(){
-                        document.getElementById(elemId).focus()
-                    }, 1);                    
+                    //if not then add some delay in focusing the field                    
+                    setTimeout(function(){el.focus()}, 1);                    
                 }
             }
         },
