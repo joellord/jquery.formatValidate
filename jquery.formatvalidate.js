@@ -2,7 +2,7 @@
  * This jQuery plugin is used for validation and reformatting
  * 
  * @author Joel Lord
- * @version 0.2.20130422
+ * @version 0.2.20130514
  * 
  * Basic Usage
  * $('#myForm').formatValidate();
@@ -49,16 +49,26 @@
  *   }
  * });
  * 
+ * Adding a new class
+ * $('#myForm').formatValidate().addClass(newClass);
+ * Where newClass is an object defined as follows:
+ * newClass.className : Name of the new class
+ * newClass.formattingFn(value): Takes the current value of the current field and replaces it with the returned value
+ * newClass.validationFn(value): The validation function.  Must return true if valid or false if invalid
+ * 
  * Future development (@TODO)
  * Add validation for: Numeric (float), NumericWith2Digits, maxLength
  * Social security number should accept hyphens (000-000-000)
  * 
  * Bugs: (@TODO)
- * Multiple validation function.  The second validation function erases error messages from the first one.
+ * Multiple validation function with non standard function (must match).  Maybe check for multiple classes in the removeInvaild function ?
  */
 
 /**
  * History:
+ * 0.2.20130514: Partially fixed the multiple classes bug (with standard validations).
+ *               Added a function to add validation/formatting classes dynamically
+ * 
  * 0.2.20130422: Finished generic function for handling custom validation classes.
  * 
  * 0.2.20130417: Started working on a generic function to handle validation/formatting of objects passed as parameters
@@ -107,6 +117,7 @@
 
             //Set the form element as invalid
             el.addClass('invalidFormElement');
+            el.addClass('fvInv' + className);
             //Set focus back if needed (except for fvMustMatch fields)
             if(keepFocus && className != 'fvMustMatch') {
                 //check for the browser's support of the focus.
@@ -143,7 +154,8 @@
             if(el.parent().hasClass('input-append') || el.parent().hasClass('input-prepend')) el = el.parent();
             el.siblings('span.' + invalidClass).remove();
             el.parent().parent().removeClass(invalidClass);
-            el.removeClass('invalidFormElement');            
+            el.removeClass('invalidFormElement');           
+            el.removeClass('fvInv' + className);
         },
         //Get the value of a given parameter.  Will start by looking for a 
         //data-className-parameter attribute and if not found, will look in the
@@ -151,6 +163,9 @@
         getParam: function(el, className, paramName) {
             //Check for the data-attribute
             var param = el.attr('data-' + className + '-' + paramName);
+            //If nothing was found, try the general 'fv' attribute
+            if(param == undefined) param = el.attr('data-fv-' + paramName);
+            
             //If the attribute had true or false, convert from string to bool
             if(param == "false") param = false;
             if(param == "true") param = true;
@@ -271,50 +286,9 @@
     //Check all elements of the form
     $el.each(function() {   
         var currentForm = $(this);
+        var formElements = currentForm.find('input, textarea, select');
         
         //Look for the fields that need formatting or validation
-        
-        //Create a generic function that handles the formatting and validation
-        function genericFormatValidate(genericFv) {
-            $('.' + genericFv.className).each(function() {
-                var procEl = $(this);
-                var reformat = false;
-                
-                //Set defaults
-                if(genericFv.isRequired == undefined) genericFv.isRequired = false;
-                if(genericFv.regex != undefined) genericFv.validationFn = function(value) {
-                    return (value.match(genericFv.regex));
-                };
-                
-                var params = {};
-                if(genericFv.params) {
-                    if(!(genericFv.params instanceof Array)) genericFv.params = [genericFv.params];
-                    for(var i = 0; i<genericFv.params.length; i++) {
-                        genericFv[genericFv.params[i]] = processes.getParam(procEl, genericFv.className, genericFv.params[i]);
-                        if(genericFv[genericFv.params[i]] == undefined && settings.showConsoleMessages) console.log('FV: #' + procEl.attr('id') + ' : Missing attribute data-' + genericFv.className + '-' + genericFv.params[i]);
-                    }
-                }
-                procEl.blur(function() {
-                    processes.removeInvalid(procEl, genericFv.classname);
-                    var cond2 = function(value) {return false;}
-                    if(!genericFv.isRequired) {
-                        cond2 = function(value) {return (to.NoWhiteSpace(value) == "");};
-                    }
-                    if(genericFv.validationFn && processes.isFunction(genericFv.validationFn)) {
-                        if(genericFv.validationFn(to.NoWhiteSpace(procEl.val())) || cond2(procEl.val())) {
-                            reformat = true;
-                        } else {
-                            processes.invalidElement(procEl, genericFv.className);
-                        }
-                    } else {
-                        reformat = true;
-                    }
-                    if(reformat) {
-                        if(genericFv.formattingFn && processes.isFunction(genericFv.formattingFn) && to.NoWhiteSpace(procEl.val()) != "") procEl.val(to.NoWhiteSpace(genericFv.formattingFn(procEl.val())));
-                    }
-                });
-            });
-        }
         
         var fvClasses = [
             //Required Field
@@ -439,6 +413,66 @@
             genericFormatValidate(fvClass);
         });
 
+        //Create a generic function that handles the formatting and validation
+        function genericFormatValidate(genericFv) {
+            $('.' + genericFv.className).each(function() {
+                var procEl = $(this);
+                var reformat = false;
+                
+                //Check if element has another class
+                var numClasses = 0;
+                $.each(fvClasses, function(index, item) {
+                    if(procEl.hasClass(item.className)) numClasses++;
+                });
+                if(numClasses > 1) procEl.attr('data-fv-multiple', numClasses);
+                
+                //Set defaults
+                if(genericFv.isRequired == undefined) genericFv.isRequired = false;
+                if(genericFv.regex != undefined) genericFv.validationFn = function(value) {
+                    return (value.match(genericFv.regex));
+                };
+                
+                var params = {};
+                if(genericFv.params) {
+                    if(!(genericFv.params instanceof Array)) genericFv.params = [genericFv.params];
+                    for(var i = 0; i<genericFv.params.length; i++) {
+                        genericFv[genericFv.params[i]] = processes.getParam(procEl, genericFv.className, genericFv.params[i]);
+                        if(genericFv[genericFv.params[i]] == undefined && settings.showConsoleMessages) console.log('FV: #' + procEl.attr('id') + ' : Missing attribute data-' + genericFv.className + '-' + genericFv.params[i]);
+                    }
+                }
+                
+                procEl.blur(function() {
+                    //Check for multiple classes
+                    if(!processes.getParam(procEl, genericFv.className, 'multiple')) {
+                        //Not multiple, proceed as usual
+                        processes.removeInvalid(procEl, genericFv.className);
+                    } else {
+                        //Mulitple classes.  Check if the invalid element is the currently checked class
+                        if(procEl.hasClass('fvInv'+genericFv.className)) {
+                            processes.removeInvalid(procEl, genericFv.className);
+                        }
+                    }   
+                        
+                    var cond2 = function(value) {return false;}
+                    if(!genericFv.isRequired) {
+                        cond2 = function(value) {return (to.NoWhiteSpace(value) == "");};
+                    }
+                    if(genericFv.validationFn && processes.isFunction(genericFv.validationFn)) {
+                        if(genericFv.validationFn(to.NoWhiteSpace(procEl.val())) || cond2(procEl.val())) {
+                            reformat = true;
+                        } else {
+                            processes.invalidElement(procEl, genericFv.className);
+                        }
+                    } else {
+                        reformat = true;
+                    }
+                    if(reformat) {
+                        if(genericFv.formattingFn && processes.isFunction(genericFv.formattingFn) && to.NoWhiteSpace(procEl.val()) != "") procEl.val(to.NoWhiteSpace(genericFv.formattingFn(procEl.val())));
+                    }
+                });
+            });
+        }
+
         /**
          * Non Standard validation/Formatting
          * 
@@ -489,8 +523,21 @@
                 return false;
             }
             return true;
+        },
+        addValidationClass: function(newClass) {
+            //Function to add a validation class
+            if(newClass.className == undefined) {
+                if(settings.showConsoleMessages) console.log('The new class does not have a name');
+                return false;
+            }
+            if(newClass.validationFn == undefined && newClass.formattingFn == undefined) {
+                if(settings.showConsoleMessages) console.log('The new class needs to have at least one of the following: formattingFn() or validationFn()');
+                return false;
+            }
+            fvClasses.push(newClass);
         }
     }
+    
 
     return fv;
   }

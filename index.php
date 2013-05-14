@@ -44,7 +44,7 @@
                     Text Input
                 </label>
                 <div class="controls">
-                    <input type="text" id="third" placeholder="Text" class="fvMinLength" data-fvMinLength-length="4" data-fvMustMatch-other="#fourth" data-fvMustMatch-message="No match"/>
+                    <input type="text" id="third" placeholder="Text" class="fvMinLength fvMustMatch" data-fvMinLength-length="4" data-fvMustMatch-other="#fourth" data-fvMustMatch-message="No match"/>
                 </div>
             </div>            
 
@@ -59,5 +59,7 @@
             
             <input type="submit" value="Send">
         </form>
+
+        
     </body>
 </html>
